@@ -36,7 +36,7 @@ import (
 	"github.com/coreos/clair/api/v1"
 	"github.com/coreos/clair/utils/types"
 	"github.com/fatih/color"
-	"github.com/kr/text"
+//	"github.com/kr/text"
 )
 
 const (
@@ -207,12 +207,13 @@ func AnalyzeLocalImage(imageName string, minSeverity types.Priority, endpoint, m
 	}
 
 	// Print report.
-	fmt.Printf("Clair report for image %s (%s)\n", imageName, time.Now().UTC())
+	fmt.Printf("{\n  \"image\": \"%s\",\n  \"date\": \"%s\",\n", imageName, time.Now().UTC())
+	fmt.Printf("  \"features\":\"%d\",\n", len(layer.Features))
 
-	if len(layer.Features) == 0 {
-		fmt.Printf("%s No features have been detected in the image. This usually means that the image isn't supported by Clair.\n", color.YellowString("NOTE:"))
-		return nil
-	}
+	// if len(layer.Features) == 0 {
+	// 	fmt.Printf("%s No features have been detected in the image. This usually means that the image isn't supported by Clair.\n", color.YellowString("NOTE:"))
+	// 	return nil
+	// }
 
 	isSafe := true
 	hasVisibleVulnerabilities := false
@@ -241,36 +242,57 @@ func AnalyzeLocalImage(imageName string, minSeverity types.Priority, endpoint, m
 
 	By(priority).Sort(vulnerabilities)
 
-	for _, vulnerabilityInfo := range vulnerabilities {
+	fmt.Printf("  \"vulnerability_count\":\"%d\",\n", len(vulnerabilities))
+	fmt.Printf("  \"vulnerabilities\": [\n")
+	for index, vulnerabilityInfo := range vulnerabilities {
 		vulnerability := vulnerabilityInfo.vulnerability
 		feature := vulnerabilityInfo.feature
 		severity := vulnerabilityInfo.severity
 
-		fmt.Printf("%s (%s)\n", vulnerability.Name, coloredSeverity(severity))
+//		fmt.Printf("%s (%s)\n", vulnerability.Name, coloredSeverity(severity))
+		fmt.Printf("  {\n    \"name\":\"%s\",\n    \"severity\":\"%s\",\n", vulnerability.Name, severity)
 
-		if vulnerability.Description != "" {
-			fmt.Printf("%s\n\n", text.Indent(text.Wrap(vulnerability.Description, 80), "\t"))
+		// if vulnerability.Description != "" {
+		// 	fmt.Printf("%s\n\n", text.Indent(text.Wrap(vulnerability.Description, 80), "\t"))
+		// }
+    json_description, _ := json.Marshal(vulnerability.Description)
+		fmt.Printf("    \"description\":%s,\n", json_description)
+
+//		fmt.Printf("\tPackage:       %s @ %s\n", feature.Name, feature.Version)
+
+		fmt.Printf("    \"package\":\"%s\",\n", feature.Name)
+		fmt.Printf("    \"version\":\"%s\",\n", feature.Version)
+
+		// if vulnerability.FixedBy != "" {
+		// 	fmt.Printf("\tFixed version: %s\n", vulnerability.FixedBy)
+		// }
+
+		fmt.Printf("    \"fixed_version\":\"%s\",\n", vulnerability.FixedBy)
+
+		// if vulnerability.Link != "" {
+		// 	fmt.Printf("\tLink:          %s\n", vulnerability.Link)
+		// }
+
+		fmt.Printf("    \"link\":\"%s\",\n", vulnerability.Link)
+
+		// fmt.Printf("\tLayer:         %s\n", feature.AddedBy)
+		fmt.Printf("    \"layer\":\"%s\"\n", feature.AddedBy)
+
+		if index+1 != len(vulnerabilities) {
+  	  fmt.Println("  },")
+    } else {
+			fmt.Println("  }")
 		}
-
-		fmt.Printf("\tPackage:       %s @ %s\n", feature.Name, feature.Version)
-
-		if vulnerability.FixedBy != "" {
-			fmt.Printf("\tFixed version: %s\n", vulnerability.FixedBy)
-		}
-
-		if vulnerability.Link != "" {
-			fmt.Printf("\tLink:          %s\n", vulnerability.Link)
-		}
-
-		fmt.Printf("\tLayer:         %s\n", feature.AddedBy)
-		fmt.Println("")
 	}
+	fmt.Println("  ]")
 
 	if isSafe {
 		fmt.Printf("%s No vulnerabilities were detected in your image\n", color.GreenString("Success!"))
 	} else if !hasVisibleVulnerabilities {
 		fmt.Printf("%s No vulnerabilities matching the minimum severity level were detected in your image\n", color.YellowString("NOTE:"))
 	}
+
+  fmt.Println("}")
 
 	return nil
 }
