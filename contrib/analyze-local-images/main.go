@@ -243,7 +243,19 @@ func AnalyzeLocalImage(imageName string, minSeverity types.Priority, endpoint, m
 	By(priority).Sort(vulnerabilities)
 
 	fmt.Printf("  \"vulnerability_count\":\"%d\",\n", len(vulnerabilities))
+
+	if isSafe {
+		// fmt.Printf("%s No vulnerabilities were detected in your image\n", color.GreenString("Success!"))
+		fmt.Printf("  \"is_safe\":true,\n")
+	} else if !hasVisibleVulnerabilities {
+		// fmt.Printf("%s No vulnerabilities matching the minimum severity level were detected in your image\n", color.YellowString("NOTE:"))
+		fmt.Printf("  \"is_safe\":false,\n")
+	} else {
+		fmt.Printf("  \"is_safe\":false,\n")
+	}
+
 	fmt.Printf("  \"vulnerabilities\": [\n")
+
 	for index, vulnerabilityInfo := range vulnerabilities {
 		vulnerability := vulnerabilityInfo.vulnerability
 		feature := vulnerabilityInfo.feature
@@ -285,12 +297,6 @@ func AnalyzeLocalImage(imageName string, minSeverity types.Priority, endpoint, m
 		}
 	}
 	fmt.Println("  ]")
-
-	if isSafe {
-		fmt.Printf("%s No vulnerabilities were detected in your image\n", color.GreenString("Success!"))
-	} else if !hasVisibleVulnerabilities {
-		fmt.Printf("%s No vulnerabilities matching the minimum severity level were detected in your image\n", color.YellowString("NOTE:"))
-	}
 
   fmt.Println("}")
 
